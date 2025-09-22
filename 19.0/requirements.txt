@@ -1,0 +1,9 @@
+# Additional Python packages for Odoo
+# Essential packages for maildesk and common Odoo use cases
+
+imap-tools==1.6.0
+
+# Uncomment and add custom packages as needed:
+# requests==2.31.0
+# openpyxl==3.1.2
+# pillow==10.0.0
