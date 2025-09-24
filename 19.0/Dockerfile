@@ -87,13 +87,19 @@ RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/od
 
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
-COPY ./odoo.conf /etc/odoo/
+COPY ./config/odoo.conf /etc/odoo/
 
-# Copy requirements.txt if it exists and install additional Python packages
-COPY ./requirements.txt* /tmp/
-RUN if [ -f /tmp/requirements.txt ]; then \
-    pip3 install --no-cache-dir -r /tmp/requirements.txt; \
-    rm /tmp/requirements.txt; \
+# Copy Python modules configuration and installation script
+COPY ./config/python-modules.txt /config/python-modules.txt
+COPY ./install-python-modules.sh /usr/local/bin/install-python-modules.sh
+
+# Make installation script executable and run it
+RUN chmod +x /usr/local/bin/install-python-modules.sh && \
+    /usr/local/bin/install-python-modules.sh && \
+    if [ -f /tmp/fallback-requirements.txt ]; then \
+    echo "Installing fallback modules via pip..." && \
+    pip3 install --no-cache-dir --break-system-packages -r /tmp/fallback-requirements.txt; \
+    rm /tmp/fallback-requirements.txt; \
     fi
 
 # Set permissions and Mount /var/lib/odoo to allow restoring filestore and /mnt/extra-addons for users addons

@@ -1,5 +1,4 @@
 FROM ubuntu:noble
-MAINTAINER Odoo S.A. <info@odoo.com>
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
@@ -14,32 +13,39 @@ ARG TARGETARCH
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-        dirmngr \
-        fonts-noto-cjk \
-        gnupg \
-        libssl-dev \
-        node-less \
-        npm \
-        python3-magic \
-        python3-num2words \
-        python3-odf \
-        python3-pdfminer \
-        python3-pip \
-        python3-phonenumbers \
-        python3-pyldap \
-        python3-qrcode \
-        python3-renderpm \
-        python3-setuptools \
-        python3-slugify \
-        python3-vobject \
-        python3-watchdog \
-        python3-xlrd \
-        python3-xlwt \
-        xz-utils && \
+    ca-certificates \
+    curl \
+    dirmngr \
+    fonts-noto-cjk \
+    gnupg \
+    libssl-dev \
+    node-less \
+    npm \
+    python3-magic \
+    python3-num2words \
+    python3-odf \
+    python3-pdfminer \
+    python3-pip \
+    python3-phonenumbers \
+    python3-pyldap \
+    python3-qrcode \
+    python3-renderpm \
+    python3-setuptools \
+    python3-slugify \
+    python3-vobject \
+    python3-watchdog \
+    python3-xlrd \
+    python3-xlwt \
+    python3-imaplib2 \
+    python3-requests \
+    python3-cryptography \
+    python3-paramiko \
+    python3-lxml \
+    python3-openpyxl \
+    python3-reportlab \
+    xz-utils && \
     if [ -z "${TARGETARCH}" ]; then \
-        TARGETARCH="$(dpkg --print-architecture)"; \
+    TARGETARCH="$(dpkg --print-architecture)"; \
     fi; \
     WKHTMLTOPDF_ARCH=${TARGETARCH} && \
     case ${TARGETARCH} in \
@@ -81,7 +87,20 @@ RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/od
 
 # Copy entrypoint script and Odoo configuration file
 COPY ./entrypoint.sh /
-COPY ./odoo.conf /etc/odoo/
+COPY ./config/odoo.conf /etc/odoo/
+
+# Copy Python modules configuration and installation script
+COPY ./config/python-modules.txt /config/python-modules.txt
+COPY ./install-python-modules.sh /usr/local/bin/install-python-modules.sh
+
+# Make installation script executable and run it
+RUN chmod +x /usr/local/bin/install-python-modules.sh && \
+    /usr/local/bin/install-python-modules.sh && \
+    if [ -f /tmp/fallback-requirements.txt ]; then \
+    echo "Installing fallback modules via pip..." && \
+    pip3 install --no-cache-dir --break-system-packages -r /tmp/fallback-requirements.txt; \
+    rm /tmp/fallback-requirements.txt; \
+    fi
 
 # Set permissions and Mount /var/lib/odoo to allow restoring filestore and /mnt/extra-addons for users addons
 RUN chown odoo /etc/odoo/odoo.conf \
