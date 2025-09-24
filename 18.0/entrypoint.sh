@@ -17,7 +17,7 @@ DB_ARGS=()
 function check_config() {
     param="$1"
     value="$2"
-    if grep -q -E "^\s*\b${param}\b\s*=" "$ODOO_RC" ; then       
+    if grep -q -E "^\s*\b${param}\b\s*=" "$ODOO_RC" ; then
         value=$(grep -E "^\s*\b${param}\b\s*=" "$ODOO_RC" |cut -d " " -f3|sed 's/["\n\r]//g')
     fi;
     DB_ARGS+=("--${param}")
@@ -28,6 +28,14 @@ check_config "db_port" "$PORT"
 check_config "db_user" "$USER"
 check_config "db_password" "$PASSWORD"
 
+# Function to start addon watcher in background
+start_addon_watcher() {
+    if [ -f "/scripts/start-addon-watcher.sh" ]; then
+        echo "Starting addon watcher in background..."
+        nohup /scripts/start-addon-watcher.sh auto > /dev/null 2>&1 &
+    fi
+}
+
 case "$1" in
     -- | odoo)
         shift
@@ -35,11 +43,13 @@ case "$1" in
             exec odoo "$@"
         else
             wait-for-psql.py ${DB_ARGS[@]} --timeout=30
+            start_addon_watcher
             exec odoo "$@" "${DB_ARGS[@]}"
         fi
         ;;
     -*)
         wait-for-psql.py ${DB_ARGS[@]} --timeout=30
+        start_addon_watcher
         exec odoo "$@" "${DB_ARGS[@]}"
         ;;
     *)

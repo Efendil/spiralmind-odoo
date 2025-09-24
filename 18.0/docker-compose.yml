@@ -28,7 +28,6 @@ services:
       - ./addons/3rd-party-addons:/mnt/3rd-party-addons
       - ./addons/enterprise-addons:/mnt/enterprise-addons
       - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
-      - ./config/requirements.txt:/tmp/requirements.txt:ro
     restart: unless-stopped
 
 volumes:

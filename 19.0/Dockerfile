@@ -89,6 +89,11 @@ RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/od
 COPY ./entrypoint.sh /
 COPY ./config/odoo.conf /etc/odoo/
 
+# Copy addon watcher scripts to /scripts directory
+RUN mkdir -p /scripts
+COPY ./addon-watcher.sh /scripts/addon-watcher.sh
+COPY ./start-addon-watcher.sh /scripts/start-addon-watcher.sh
+
 # Copy Python modules configuration and installation script
 COPY ./config/python-modules.txt /config/python-modules.txt
 COPY ./install-python-modules.sh /usr/local/bin/install-python-modules.sh
@@ -105,7 +110,11 @@ RUN chmod +x /usr/local/bin/install-python-modules.sh && \
 # Set permissions and Mount /var/lib/odoo to allow restoring filestore and /mnt/extra-addons for users addons
 RUN chown odoo /etc/odoo/odoo.conf \
     && mkdir -p /mnt/extra-addons \
-    && chown -R odoo /mnt/extra-addons
+    && chown -R odoo /mnt/extra-addons \
+    && chmod +x /scripts/addon-watcher.sh \
+    && chmod +x /scripts/start-addon-watcher.sh \
+    && mkdir -p /var/log \
+    && chown odoo /var/log
 VOLUME ["/var/lib/odoo", "/mnt/extra-addons"]
 
 # Expose Odoo services
