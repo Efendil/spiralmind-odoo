@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_pricing_scale,access_pricing_scale,model_pricing_scale,base.group_user,1,1,1,1
+access_shipment_user,access.shipment.user,model_shipment_management,base.group_user,1,1,1,1
+access_shipment_line_user,access.shipment.line.user,model_shipment_line,base.group_user,1,1,1,1
+access_shipment_vehicle,access.shipment.vehicle,model_shipment_vehicle,base.group_user,1,1,1,1
+access_shipment_vehicle_category,access.shipment.vehicle.category,model_shipment_vehicle_category,base.group_user,1,1,1,1
+access_shipment_postal_code,access.shipment.postal.code,model_postal_code,base.group_user,1,1,1,1

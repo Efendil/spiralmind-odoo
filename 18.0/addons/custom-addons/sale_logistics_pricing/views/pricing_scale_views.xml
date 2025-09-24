@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_pricing_scale_pivot" model="ir.ui.view">
+        <field name="name">pricing.scale.pivot</field>
+        <field name="model">pricing.scale</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="cost" type="measure"/>
+                <field name="distance_interval" type="row"/>
+                <field name="max_height" type="col"/>
+                <field name="weight_kg" type="col"/>
+                <field name="lademeter" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_pricing_scale_list" model="ir.ui.view">
+        <field name="name">pricing.scale.list</field>
+        <field name="model">pricing.scale</field>
+        <field name="arch" type="xml">
+            <list string="Pricing Scale" editable="top">
+                <field name="distance_interval"/>
+                <field name="max_height"/>
+                <field name="weight_kg"/>
+                <field name="lademeter"/>
+                <field name="cost"/>
+            </list>
+        </field>
+    </record>
+
+<!--    <record id="view_pricing_scale_form" model="ir.ui.view">-->
+<!--        <field name="name">pricing.scale.form</field>-->
+<!--        <field name="model">pricing.scale</field>-->
+<!--        <field name="arch" type="xml">-->
+<!--            <form string="Pricing Scale">-->
+<!--                <sheet>-->
+<!--                    <group>-->
+<!--                        <field name="distance_interval"/>-->
+<!--                        <field name="max_height"/>-->
+<!--                        <field name="weight_kg"/>-->
+<!--                        <field name="cost"/>-->
+<!--                    </group>-->
+<!--                </sheet>-->
+<!--            </form>-->
+<!--        </field>-->
+<!--    </record>-->
+
+
+
+    <record id="action_pricing_scale_view" model="ir.actions.act_window">
+        <field name="name">Pricing Scale</field>
+        <field name="res_model">pricing.scale</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="view_id" ref="view_pricing_scale_pivot"/>
+        <field name="target">current</field>
+    </record>
+
+
+    <record id="menu_pricing_scale_config" model="ir.ui.menu">
+        <field name="name">Pricing Scale</field>
+        <field name="parent_id" ref="sale.menu_sales_config"/>
+        <field name="action" ref="action_pricing_scale_view"/>
+        <field name="sequence" eval="20"/>
+    </record>
+
+<!--    <record id="pricing_scale_initialize_action" model="ir.actions.server">-->
+<!--        <field name="name">Initialize Pricing Scale</field>-->
+<!--        <field name="model_id" ref="sale_logistics_pricing.model_pricing_scale"/>-->
+<!--        <field name="state">code</field>-->
+<!--        <field name="code">model.generate_combinations()</field>-->
+<!--    </record>-->
+
+
+</odoo>

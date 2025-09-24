@@ -1,0 +1,141 @@
+<odoo>
+    <!-- list views -->
+    <record id="view_shipment_list" model="ir.ui.view">
+        <field name="name">shipment.management.list</field>
+        <field name="model">shipment.management</field>
+        <field name="arch" type="xml">
+            <list string="Shipments">
+                <field name="reference"/>
+                <field name="ref_customer"/>
+                <field name="delivery_company_id"/>
+                <field name="zip_code"/>
+                <field name="total_quantity"/>
+                <field name="total_weight"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shipment_management_all_list" model="ir.ui.view">
+        <field name="name">shipment.management.list</field>
+        <field name="model">shipment.management</field>
+        <field name="arch" type="xml">
+            <list string="Shipments" editable="bottom">
+                <field name="reference"/>
+                <field name="order_date"/>
+                <field name="customer_id"/>
+                <field name="ref_customer"/>
+                <field name="shipment_type_display"/>
+                <field name="delivery_company_id"/>
+                <field name="zip_code"/>
+                <field name="total_quantity"/>
+                <field name="total_weight"/>
+                <field name="state"/>
+                <field name="vehicle_id"/>
+
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_shipment_form" model="ir.ui.view">
+        <field name="name">shipment.management.form</field>
+        <field name="model">shipment.management</field>
+        <field name="arch" type="xml">
+            <form string="Shipment">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" invisible="state != 'draft'"/>
+                    <button name="action_pick" type="object" string="Picked" invisible="state in ['draft','cancelled'] "/>
+                    <button name="action_deliver" type="object" string="Delivered" invisible="state in ['draft','cancelled'] "/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state in ['draft','cancelled'] "/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,picked,in_transit,delivered,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                             <field name="reference" />
+                        </group>
+                        <group col="4">
+                            <field name="entry_date"/>
+                            <field name="order_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="customer_id" context="{'show_ref': True}"/>
+                            <field name="ref_customer"/>
+                        </group>
+                        <group>
+                            <field name="delivery_company_id"/>
+                            <field name="zip_code"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="express"/>
+                            <field name="loading_meter" invisible="not express"/>
+                            <field name="vehicle_id"
+                            domain="[('secured', '=', spx_status == 'secured'), ('express', '=', express)]"/>
+                        </group>
+                        <group invisible="shipment_type != 'export'">
+                            <field name="spx_status"/>
+                            <field name="security_measurement" invisible="spx_status == 'secured'"/>
+                            <field name="direct"/>
+                            <field name="handling_agent_id" invisible="not direct"/>
+                            <field name="customer_warehouse_id" invisible="direct"/>
+                            <field name="red_folder_required"/>
+                     </group>
+                    </group>
+
+
+                    <notebook>
+                        <page string="Shipment Lines">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="description"/>
+                                    <field name="quantity"/>
+                                    <field name="weight"/>
+                                    <field name="volume"/>
+                                    <field name="length_cm"/>
+                                    <field name="width_cm"/>
+                                    <field name="height_cm"/>
+                                </list>
+                            </field>
+                            <group>
+                                <field name="total_quantity" readonly="1"/>
+                                <field name="total_weight" readonly="1"/>
+                                <field name="total_volume" readonly="1"/>
+                                <field name="total_price" readonly="1"/>
+                            </group>
+                        </page>
+
+                        <page string="Documents">
+                            <field name="document_ids" widget="many2many_binary"/>
+                            <field name="document_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="mimetype"/>
+                                    <field name="create_date"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_shipment_management" model="ir.actions.act_window">
+        <field name="name">Shipments (Export/Import)</field>
+        <field name="res_model">shipment.management</field>
+        <field name="view_mode">list</field>
+        <field name="view_ids" eval="[(5,0,0),
+                                       (0,0,{'view_mode':'list','view_id':ref('view_shipment_management_all_list')})]"/>
+
+    </record>
+</odoo>

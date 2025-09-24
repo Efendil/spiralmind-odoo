@@ -1,0 +1,110 @@
+<odoo>
+    <!-- Main app menu (appears on home page with icon) -->
+    <menuitem id="menu_shipment_root"
+              name="Shipment"
+              sequence="10"
+              web_icon="shipment_management,static/description/icon.png"/>
+
+
+    <menuitem id="menu_shipment_management"
+              name="Shipments"
+              parent="menu_shipment_root"
+              sequence="1"/>
+
+    <menuitem id="menu_shipment_management_export_import"
+              name="Shipments(Export/Import)"
+              parent="menu_shipment_management"
+              action="shipment_management.action_shipment_management"
+              sequence="1"/>
+
+    <!-- Import submenu -->
+    <menuitem id="menu_shipment_management_import"
+              name="Imports"
+              parent="menu_shipment_management"
+              sequence="2"/>
+    <record id="action_shipment_import" model="ir.actions.act_window">
+        <field name="name">Imports</field>
+        <field name="res_model">shipment.management</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shipment_type','=','import')]</field>
+        <field name="context">{'default_shipment_type':'import'}</field>
+        <field name="view_ids" eval="[(5,0,0),
+                                       (0,0,{'view_mode':'list','view_id':ref('view_shipment_list')})]"/>
+    </record>
+
+
+    <menuitem id="menu_shipment_simple_import"
+              name="Imports"
+              parent="menu_shipment_management_import"
+              action="action_shipment_import"
+              sequence="10"/>
+
+    <menuitem id="menu_shipment_extra_import"
+              name="Extra Imports"
+              parent="menu_shipment_management_import"
+              action="action_shipment_import"
+              sequence="20"/>
+
+    <!-- Export submenu -->
+    <menuitem id="menu_shipment_export_mangement"
+              name="Exports"
+              parent="menu_shipment_management"
+              sequence="3"/>
+    <record id="action_shipment_export" model="ir.actions.act_window">
+        <field name="name">Exports</field>
+        <field name="res_model">shipment.management</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shipment_type','=','export')]</field>
+        <field name="context">{'default_shipment_type':'export'}</field>
+        <field name="view_ids" eval="[(5,0,0),
+                                       (0,0,{'view_mode':'list','view_id':ref('view_shipment_list')})]"/>
+    </record>
+
+    <menuitem id="menu_shipment_simple_export"
+              name="Exports"
+              parent="menu_shipment_export_mangement"
+              action="action_shipment_export"
+              sequence="10"/>
+    <menuitem id="menu_shipment_extra_export"
+              name="Extra Exports"
+              parent="menu_shipment_export_mangement"
+              action="action_shipment_export"
+              sequence="20"/>
+
+    <!--Configuration menus-->
+    <menuitem id="menu_shipment_configuration"
+              name="Configuration"
+              parent="menu_shipment_root"
+              sequence="10"/>
+    <record id="menu_pricing_scale_config" model="ir.ui.menu">
+        <field name="name">Pricing Scale</field>
+        <field name="parent_id" ref="menu_shipment_configuration"/>
+        <field name="action" ref="shipment_management.action_pricing_scale_view"/>
+        <field name="sequence" eval="20"/>
+    </record>
+
+    <record id="action_shipment_postal_code" model="ir.actions.act_window">
+        <field name="name">Postal codes</field>
+        <field name="res_model">postal.code</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="menu_shipment_postal_code_config" model="ir.ui.menu">
+        <field name="name">Postal codes</field>
+        <field name="parent_id" ref="menu_shipment_configuration"/>
+        <field name="action" ref="action_shipment_postal_code"/>
+        <field name="sequence" eval="30"/>
+    </record>
+
+    <record id="menu_shipment_vehicle_config" model="ir.ui.menu">
+        <field name="name">Vehicle</field>
+        <field name="parent_id" ref="menu_shipment_configuration"/>
+        <field name="action" ref="shipment_management.action_shipment_vehicle_view"/>
+        <field name="sequence" eval="40"/>
+    </record>
+    <record id="menu_shipment_vehicle_category_config" model="ir.ui.menu">
+        <field name="name">Vehicle category</field>
+        <field name="parent_id" ref="menu_shipment_configuration"/>
+        <field name="action" ref="shipment_management.action_shipment_vehicle_category_view"/>
+        <field name="sequence" eval="50"/>
+    </record>
+</odoo>
