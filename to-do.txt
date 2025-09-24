@@ -1,0 +1,14 @@
+Here are the steps to update the module and the database in the server:
+
+cd /opt/path_to_odoo_files
+
+su odoo
+
+/opt/path_to_odoo_files/.../bin/python3.12 /opt/odoo/odoo-bin -c /etc/odoo.conf -u module_name -d database_name
+
+(path_to_python path_to_odoo-bin -c path_to_odoo.conf )
+
+exit
+
+
+Obigen Code Abhängig von Ordneränderungen am AddonsOrdner dynamisch ausführen. Neuer Ordner CustomAddons anlegen und diesen Überwachen. Automatisierter Pull bei Push.

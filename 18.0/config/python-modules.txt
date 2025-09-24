@@ -1,0 +1,33 @@
+# Python modules for Odoo 18.0
+# This file lists Python modules that should be installed via apt packages
+# The Dockerfile will automatically find and install the corresponding python3-* packages
+
+# Essential packages for maildesk and common Odoo use cases
+imap-tools
+imapclient
+lxml-html-clean
+
+# Additional useful packages (uncomment as needed)
+# requests
+# openpyxl
+# pillow
+# reportlab
+# cryptography
+# paramiko
+# beautifulsoup4
+# xlsxwriter
+# pdfplumber
+# qrcode
+# phonenumbers
+# vobject
+# watchdog
+# slugify
+# num2words
+# magic
+# odf
+# pdfminer
+# pyldap
+# renderpm
+# setuptools
+# xlrd
+# xlwt

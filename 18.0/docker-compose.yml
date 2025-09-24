@@ -1,0 +1,35 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql:ro
+    restart: unless-stopped
+
+  odoo:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "8069:8069"
+      - "8072:8072"
+    environment:
+      HOST: db
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ./addons/extra-addons:/mnt/extra-addons
+      - ./addons/3rd-party-addons:/mnt/3rd-party-addons
+      - ./addons/enterprise-addons:/mnt/enterprise-addons
+      - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - ./config/requirements.txt:/tmp/requirements.txt:ro
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  odoo_data:
