@@ -153,28 +153,15 @@ save_states() {
     echo "$states" > "$STATE_FILE"
 }
 
-# Function to check if module is installed in database
-is_module_installed() {
-    local module_name="$1"
+# Function to upgrade specific modules
+upgrade_modules() {
+    local modules=("$@")
     local db_name=$(get_database_name)
 
-    # Use Odoo to check module state
-    local check_cmd="$PYTHON_BIN $ODOO_BIN -c $ODOO_CONFIG -d $db_name --stop-after-init -e 'import odoo; env = odoo.api.Environment.manage(); cr = odoo.registry(\"$db_name\").cursor(); cr.execute(\"SELECT state FROM ir_module_module WHERE name = %s\", (\"$module_name\",)); result = cr.fetchone(); print(result[0] if result else \"not_found\"); cr.close()'"
-
-    local result=$(eval "$check_cmd" 2>/dev/null | tail -1)
-
-    if [[ "$result" == "installed" || "$result" == "to upgrade" ]]; then
-        return 0
-    else
-        return 1
+    if [ ${#modules[@]} -eq 0 ]; then
+        log_info "No modules to upgrade"
+        return
     fi
-}
-
-# Function to install and upgrade modules intelligently
-process_modules() {
-    local new_modules=("$1")
-    local changed_modules=("$2")
-    local db_name=$(get_database_name)
 
     # Create upgrade lock
     if [ -f "$UPGRADE_LOCK" ]; then
@@ -184,72 +171,27 @@ process_modules() {
 
     echo $$ > "$UPGRADE_LOCK"
 
-    local install_list=()
-    local upgrade_list=()
+    log_info "Starting upgrade for modules: ${modules[*]}"
+    log_info "Database: $db_name"
 
-    # Separate new modules for install vs upgrade
-    for module in "${new_modules[@]}"; do
-        if is_module_installed "$module"; then
-            upgrade_list+=("$module")
-            log_info "Module $module is installed - will upgrade"
-        else
-            install_list+=("$module")
-            log_info "Module $module is new - will install"
-        fi
-    done
+    # Join modules with comma
+    local module_list=$(IFS=','; echo "${modules[*]}")
 
-    # Add changed modules to upgrade list
-    for module in "${changed_modules[@]}"; do
-        if [[ ! " ${new_modules[@]} " =~ " $module " ]]; then
-            upgrade_list+=("$module")
-            log_info "Module $module has changes - will upgrade"
-        fi
-    done
+    # Construct the upgrade command
+    local upgrade_cmd="$PYTHON_BIN $ODOO_BIN -c $ODOO_CONFIG -u $module_list -d $db_name --stop-after-init"
 
-    # Install new modules
-    if [ ${#install_list[@]} -gt 0 ]; then
-        local install_module_list=$(IFS=','; echo "${install_list[*]}")
-        local install_cmd="$PYTHON_BIN $ODOO_BIN -c $ODOO_CONFIG -i $install_module_list -d $db_name --stop-after-init"
+    log_info "Executing: $upgrade_cmd"
 
-        log_info "Installing new modules: ${install_list[*]}"
-        log_info "Executing: $install_cmd"
-
-        if timeout 300 $install_cmd >> "$LOG_FILE" 2>&1; then
-            log_success "Successfully installed modules: ${install_list[*]}"
-        else
-            log_error "Failed to install modules: ${install_list[*]}"
-            log_error "Check $LOG_FILE for detailed error information"
-        fi
-    fi
-
-    # Upgrade existing modules
-    if [ ${#upgrade_list[@]} -gt 0 ]; then
-        local upgrade_module_list=$(IFS=','; echo "${upgrade_list[*]}")
-        local upgrade_cmd="$PYTHON_BIN $ODOO_BIN -c $ODOO_CONFIG -u $upgrade_module_list -d $db_name --stop-after-init"
-
-        log_info "Upgrading existing modules: ${upgrade_list[*]}"
-        log_info "Executing: $upgrade_cmd"
-
-        if timeout 300 $upgrade_cmd >> "$LOG_FILE" 2>&1; then
-            log_success "Successfully upgraded modules: ${upgrade_list[*]}"
-        else
-            log_error "Failed to upgrade modules: ${upgrade_list[*]}"
-            log_error "Check $LOG_FILE for detailed error information"
-        fi
-    fi
-
-    if [ ${#install_list[@]} -eq 0 ] && [ ${#upgrade_list[@]} -eq 0 ]; then
-        log_info "No modules to install or upgrade"
+    # Execute the upgrade command with proper error handling
+    if timeout 300 $upgrade_cmd >> "$LOG_FILE" 2>&1; then
+        log_success "Successfully upgraded modules: ${modules[*]}"
+    else
+        log_error "Failed to upgrade modules: ${modules[*]}"
+        log_error "Check $LOG_FILE for detailed error information"
     fi
 
     # Remove upgrade lock
     rm -f "$UPGRADE_LOCK"
-}
-
-# Legacy function for backwards compatibility
-upgrade_modules() {
-    local modules=("$@")
-    process_modules "" "${modules[*]}"
 }
 
 # Function to detect and upgrade changed modules
@@ -257,7 +199,6 @@ detect_and_upgrade_changes() {
     local current_states="{}"
     local previous_states=$(load_states)
     local changed_modules=()
-    local new_modules=()
 
     log_info "Scanning addon directories for changes..."
 
@@ -297,12 +238,7 @@ except:
                     log_info "Detected changes in module: $module"
                     log_info "  Previous state: $previous_state"
                     log_info "  Current state: $current_state"
-
-                    if [ "$previous_state" == "new" ]; then
-                        new_modules+=("$module")
-                    else
-                        changed_modules+=("$module")
-                    fi
+                    changed_modules+=("$module")
                 fi
             done
         else
@@ -313,15 +249,12 @@ except:
     # Save current states
     save_states "$current_states"
 
-    # Process new and changed modules
-    local total_modules=$((${#new_modules[@]} + ${#changed_modules[@]}))
-    if [ $total_modules -gt 0 ]; then
-        log_info "Found $total_modules modules to process:"
-        [ ${#new_modules[@]} -gt 0 ] && log_info "  New modules: ${new_modules[*]}"
-        [ ${#changed_modules[@]} -gt 0 ] && log_info "  Changed modules: ${changed_modules[*]}"
-        process_modules "${new_modules[*]}" "${changed_modules[*]}"
+    # Upgrade changed modules if any
+    if [ ${#changed_modules[@]} -gt 0 ]; then
+        log_info "Found ${#changed_modules[@]} changed modules: ${changed_modules[*]}"
+        upgrade_modules "${changed_modules[@]}"
     else
-        log_info "No new or changed modules detected"
+        log_info "No changed modules detected"
     fi
 }
 
