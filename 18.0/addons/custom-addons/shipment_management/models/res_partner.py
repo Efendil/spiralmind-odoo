@@ -1,4 +1,5 @@
-from odoo import fields, models, api
+from odoo import fields, models, api,_
+from odoo.exceptions import ValidationError
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
@@ -21,5 +22,14 @@ class ResPartner(models.Model):
                 rec.display_name = rec.ref or rec.name or ''
             else:
                 rec.display_name = rec.name or ''
+
+    @api.constrains('zip', 'country_id')
+    def _check_zip_germany(self):
+        for rec in self:
+            if rec.country_id and rec.country_id.code == 'DE':
+                if not rec.zip or len(rec.zip) != 5 or not rec.zip.isdigit():
+                    raise ValidationError(
+                        _("In Germany, the ZIP code must contain exactly 5 digits.")
+                    )
 
 

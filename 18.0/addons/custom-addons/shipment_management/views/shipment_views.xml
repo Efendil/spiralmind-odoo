@@ -21,7 +21,8 @@
         <field name="model">shipment.management</field>
         <field name="arch" type="xml">
             <list string="Shipments" editable="bottom">
-                <field name="reference"/>
+                <field name="reference" readonly="1" options="{'no_open': False}"/>
+                <button name="action_open_shipment" type="object" icon="fa-external-link" title="Open"/>
                 <field name="order_date"/>
                 <field name="customer_id"/>
                 <field name="ref_customer"/>
@@ -31,7 +32,14 @@
                 <field name="total_quantity"/>
                 <field name="total_weight"/>
                 <field name="state"/>
+                <field name="postal_code_code"/>
                 <field name="vehicle_id"/>
+                <field name="sequence"/>
+                <field name="handling_agent_id"/>
+                <field name="customer_warehouse_id"/>
+                <field name="security_measurement"/>
+                <field name="dangerous"/>
+                <field name="taillift"/>
 
             </list>
         </field>
@@ -54,30 +62,30 @@
                 <sheet>
                     <group>
                         <group>
-                             <field name="reference" />
-                        </group>
-                        <group col="4">
+                            <field name="reference" />
                             <field name="entry_date"/>
                             <field name="order_date"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="customer_id" context="{'show_ref': True}"/>
+                             <field name="customer_id" context="{'show_ref': True}"/>
                             <field name="ref_customer"/>
+                            <field name="delivery_company_id" domain="domain_delivery_company_id"/>
+                            <field name="loading_time" widget="float_time"/>
+                            <div class="o_row">
+                                <label for="zip_code"/>
+                                <field name="zip_code"/>
+                                <field name="city" readonly="1" class="oe_inline"/>
+                            </div>
+
                         </group>
                         <group>
-                            <field name="delivery_company_id"/>
-                            <field name="zip_code"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group>
+                            <field name="dangerous" invisible="state == 'draft'"/>
+                            <field name="taillift" invisible="state == 'draft'"/>
                             <field name="express"/>
                             <field name="loading_meter" invisible="not express"/>
-                            <field name="vehicle_id"
-                            domain="[('secured', '=', spx_status == 'secured'), ('express', '=', express)]"/>
+                            <field name="vehicle_id"/>
                         </group>
+                    </group>
+
+                    <group>
                         <group invisible="shipment_type != 'export'">
                             <field name="spx_status"/>
                             <field name="security_measurement" invisible="spx_status == 'secured'"/>
@@ -85,7 +93,13 @@
                             <field name="handling_agent_id" invisible="not direct"/>
                             <field name="customer_warehouse_id" invisible="direct"/>
                             <field name="red_folder_required"/>
-                     </group>
+                        </group>
+                        <group>
+                            <field name="total_quantity" readonly="1"/>
+                            <field name="total_weight" readonly="1"/>
+                            <field name="total_volume" readonly="1"/>
+                            <field name="total_price" readonly="1"/>
+                        </group>
                     </group>
 
 
@@ -100,14 +114,12 @@
                                     <field name="length_cm"/>
                                     <field name="width_cm"/>
                                     <field name="height_cm"/>
+                                    <field name="volumetric_weight"/>
+                                    <field name="chargeable_weight"/>
+
                                 </list>
                             </field>
-                            <group>
-                                <field name="total_quantity" readonly="1"/>
-                                <field name="total_weight" readonly="1"/>
-                                <field name="total_volume" readonly="1"/>
-                                <field name="total_price" readonly="1"/>
-                            </group>
+
                         </page>
 
                         <page string="Documents">

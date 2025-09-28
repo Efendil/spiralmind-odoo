@@ -17,7 +17,8 @@ class Shipment(models.Model):
         readonly=False,
         index=True,
         default="New",
-        tracking=True
+        tracking=True,
+        required=True
     )
     shipment_type = fields.Selection(
         [("import", "Import"), ("export", "Export")],
@@ -33,9 +34,13 @@ class Shipment(models.Model):
     customer_id = fields.Many2one('res.partner', string='Customer',required=True,
                                   domain=[('ref', '!=', False)],tracking=True)
     ref_customer = fields.Char(string="Customer reference", compute='_compute_ref_customer',
-                               store=False, readonly=False,tracking=True)
-    delivery_company_id = fields.Many2one('res.partner', string="Pickup/Delivery Company", required=True,tracking=True)
-    zip_code = fields.Many2one('postal.code',string="ZIP code",tracking=True)
+                               store=False, readonly=False,tracking=True,required=True)
+    delivery_company_id = fields.Many2one('res.partner', string="Pickup/Delivery Company", required=True,tracking=True,)
+    domain_delivery_company_id = fields.Binary(compute="_compute_domain_delivery_company_id", readonly=True)
+    loading_time = fields.Float(string="Loading Time", tracking=True)
+    zip_code = fields.Many2one('postal.code',string="ZIP code",tracking=True,required=True)
+    city = fields.Char(string="City",related="zip_code.city",store=False,eadonly=True,required=True)
+    postal_code_code = fields.Char(string="Postal Code",related="zip_code.code",store=True,readonly=True)
     total_quantity = fields.Integer(string="Total Quantity", compute='_compute_totals', store=True)
     total_weight = fields.Float(string="Total Weight (kg)", compute='_compute_totals', store=True,
                                 digits='Product Unit of Measure')
@@ -61,7 +66,7 @@ class Shipment(models.Model):
     spx_status = fields.Selection([
         ('secured', 'Secured'),
         ('unsecured', 'Unsecured'),
-    ], string="SPX Status",tracking=True)
+    ], string="SPX Status",tracking=True,required=True, default='unsecured' )
     security_measurement = fields.Selection([
         ('xray', 'X-Ray'),
         ('ras_cargo', 'RAS-Cargo')
@@ -72,13 +77,30 @@ class Shipment(models.Model):
     customer_warehouse_id = fields.Many2one('res.partner', string="Customer Warehouse",
                                             domain=[('warehouse', '=', True)],tracking=True)
     red_folder_required = fields.Boolean(string="C7 Red Folder Required", compute='_compute_red_folder',store=True)
-    express = fields.Boolean(string="Express")
-    loading_meter = fields.Float(string='Loading meter', compute="_compute_loading_meter", store=False, digits=(16, 1))
+    express = fields.Boolean(string="Express", tracking=True)
+    loading_meter = fields.Float(string='Loading meter', tracking=True)
+    dangerous = fields.Boolean(string="Dangerous Goods", tracking=True)
+    taillift = fields.Boolean(string="Taillift", tracking=True)
+    sequence = fields.Char(string="Sequence")
 
     _sql_constraints = [
         ('reference_uniq', 'unique(reference)', 'Reference must be unique.'),
     ]
 
+    def name_get(self):
+        result = []
+        for rec in self:
+            name = rec.reference or "New"
+            result.append((rec.id, name))
+        return result
+
+    @api.depends('customer_id', 'customer_id.company_ids')
+    def _compute_domain_delivery_company_id(self):
+        for rec in self:
+            if rec.customer_id:
+                rec.domain_delivery_company_id = [('id', 'in', rec.customer_id.company_ids.ids)]
+            else:
+                rec.domain_delivery_company_id = []
 
     def create(self, vals):
         shipment_type = vals.get("shipment_type") or self.env.context.get("default_shipment_type")
@@ -91,11 +113,6 @@ class Shipment(models.Model):
             vals["reference"] = self.env['ir.sequence'].with_company(company_id).next_by_code(seq_code) or "/"
 
         return super().create(vals)
-
-    @api.depends('total_weight')
-    def _compute_loading_meter(self):
-        for rec in self:
-            rec.loading_meter = rec.total_weight / 700 if rec.total_weight else 0
 
     @api.depends('line_ids.quantity', 'line_ids.weight', 'line_ids.volume', 'line_ids.price_unit')
     def _compute_totals(self):
@@ -211,6 +228,19 @@ class Shipment(models.Model):
             else:
                 self.delivery_company_id = False
 
+
+
+    @api.onchange('delivery_company_id')
+    def _onchange_delivery_company_id(self):
+        for rec in self:
+            rec.zip_code = False
+            if rec.delivery_company_id and rec.delivery_company_id.zip:
+                postal = self.env['postal.code'].search(
+                    [('name', '=', rec.delivery_company_id.zip)],
+                    limit=1
+                )
+                rec.zip_code = postal.id if postal else False
+
     @api.onchange('spx_status','express')
     def _onchange_spx_status(self):
         if self.spx_status == 'secured' and self.vehicle_id and not self.vehicle_id.secured:
@@ -220,10 +250,20 @@ class Shipment(models.Model):
 
     @api.onchange('security_measurement')
     def _onchange_security_measurement(self):
-        if self.security_measurement == 'xray':
+        if self.security_measurement == 'xray' or self.security_measurement == 'ras_cargo' :
             self.direct = True
         else:
             self.direct = False
+
+
+    def action_open_shipment(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'shipment.management',
+            'res_id': self.id,
+            'view_mode': 'form',
+        }
 
 
 

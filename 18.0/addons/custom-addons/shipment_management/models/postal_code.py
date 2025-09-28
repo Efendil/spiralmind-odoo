@@ -10,4 +10,4 @@ class PostalCode(models.Model):
         string="Zone",
     )
     code = fields.Char(string="Code")
-    place = fields.Char(string="Place")
+    city = fields.Char(string="City", required=True)
