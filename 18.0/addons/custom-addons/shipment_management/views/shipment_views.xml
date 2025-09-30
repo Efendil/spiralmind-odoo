@@ -20,26 +20,37 @@
         <field name="name">shipment.management.list</field>
         <field name="model">shipment.management</field>
         <field name="arch" type="xml">
-            <list string="Shipments" editable="bottom">
-                <field name="reference" readonly="1" options="{'no_open': False}"/>
+            <list string="Shipments" editable="bottom" create="false" open_form_view="True">
+                <field name="reference" readonly="1"/>
                 <button name="action_open_shipment" type="object" icon="fa-external-link" title="Open"/>
                 <field name="order_date"/>
                 <field name="customer_id"/>
                 <field name="ref_customer"/>
                 <field name="shipment_type_display"/>
                 <field name="delivery_company_id"/>
+                <field name="loading_time"/>
+                <field name="spx_status"
+                       decoration-success="spx_status == 'secured'"
+                       decoration-danger="spx_status=='unsecured'"/>
                 <field name="zip_code"/>
+                <field name="dangerous"/>
+                <field name="taillift"/>
                 <field name="total_quantity"/>
                 <field name="total_weight"/>
-                <field name="state"/>
+                <field name="total_volume"/>
+                <field name="total_chargeable_weight"/>
+                <field name="state"
+                       decoration-success="state == 'confirmed'"
+                       decoration-info="state == 'picked'"
+                       decoration-primary="state == 'delivered'"
+                       decoration-warning="state == 'cancelled'"
+                       widget="badge"/>
                 <field name="postal_code_code"/>
                 <field name="vehicle_id"/>
                 <field name="sequence"/>
+                <field name="security_measurement" decoration-success="security_measurement"/>
                 <field name="handling_agent_id"/>
                 <field name="customer_warehouse_id"/>
-                <field name="security_measurement"/>
-                <field name="dangerous"/>
-                <field name="taillift"/>
 
             </list>
         </field>
@@ -61,24 +72,30 @@
                 </header>
                 <sheet>
                     <group>
-                        <group>
+                        <group col="1">
                             <field name="reference" />
                             <field name="entry_date"/>
                             <field name="order_date"/>
                              <field name="customer_id" context="{'show_ref': True}"/>
                             <field name="ref_customer"/>
                             <field name="delivery_company_id" domain="domain_delivery_company_id"/>
-                            <field name="loading_time" widget="float_time"/>
+
                             <div class="o_row">
-                                <label for="zip_code"/>
-                                <field name="zip_code"/>
+                                <label for="zip_code" />
+                                <field name="zip_code" class="oe_inline"/>
                                 <field name="city" readonly="1" class="oe_inline"/>
+                            </div>
+
+                            <div class="o_row">
+                                <label for="loading_time_from" string="Loading Time " />
+                                <field name="loading_time_from" widget="float_time" class="oe_inline"/>
+                                <field name="loading_time_to" widget="float_time" class="oe_inline"/>
                             </div>
 
                         </group>
                         <group>
-                            <field name="dangerous" invisible="state == 'draft'"/>
-                            <field name="taillift" invisible="state == 'draft'"/>
+                            <field name="dangerous" />
+                            <field name="taillift" />
                             <field name="express"/>
                             <field name="loading_meter" invisible="not express"/>
                             <field name="vehicle_id"/>
@@ -98,6 +115,7 @@
                             <field name="total_quantity" readonly="1"/>
                             <field name="total_weight" readonly="1"/>
                             <field name="total_volume" readonly="1"/>
+                            <field name="total_chargeable_weight" readonly="1"/>
                             <field name="total_price" readonly="1"/>
                         </group>
                     </group>

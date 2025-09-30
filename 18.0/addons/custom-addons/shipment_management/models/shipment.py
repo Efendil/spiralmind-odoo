@@ -35,9 +35,11 @@ class Shipment(models.Model):
                                   domain=[('ref', '!=', False)],tracking=True)
     ref_customer = fields.Char(string="Customer reference", compute='_compute_ref_customer',
                                store=False, readonly=False,tracking=True,required=True)
-    delivery_company_id = fields.Many2one('res.partner', string="Pickup/Delivery Company", required=True,tracking=True,)
+    delivery_company_id = fields.Many2one('res.partner', string="Pickup/Delivery Company", required=True,tracking=True)
     domain_delivery_company_id = fields.Binary(compute="_compute_domain_delivery_company_id", readonly=True)
-    loading_time = fields.Float(string="Loading Time", tracking=True)
+    loading_time_from = fields.Float(string="From", tracking=True)
+    loading_time_to = fields.Float(string="To", tracking=True)
+    loading_time = fields.Char(string="Loading Time", compute="_compute_loading_time", store=False)
     zip_code = fields.Many2one('postal.code',string="ZIP code",tracking=True,required=True)
     city = fields.Char(string="City",related="zip_code.city",store=False,eadonly=True,required=True)
     postal_code_code = fields.Char(string="Postal Code",related="zip_code.code",store=True,readonly=True)
@@ -45,9 +47,11 @@ class Shipment(models.Model):
     total_weight = fields.Float(string="Total Weight (kg)", compute='_compute_totals', store=True,
                                 digits='Product Unit of Measure')
     total_volume = fields.Float(string="Total Volume (m³)", compute='_compute_totals', store=True, digits=(16, 3))
+    total_chargeable_weight = fields.Float(string="Chargeable weight", compute='_compute_totals', store=True,
+                                digits='Product Unit of Measure')
     total_price = fields.Float(string="Total Price",compute="_compute_totals",store=True,digits="Product Price")
     entry_date = fields.Date(string="Entry Date", default=fields.Date.context_today, readonly=True)
-    order_date = fields.Date(string="Order Date", tracking=True,
+    order_date = fields.Date(string="Order Date", tracking=True,  readonly=False,
                              default=lambda self: fields.Date.to_string(datetime.now().date() + timedelta(days=1)))
     line_ids = fields.One2many('shipment.line', 'shipment_id', string="Shipment Lines",tracking=True)
     document_ids = fields.Many2many('ir.attachment', string="Documents",tracking=True)
@@ -83,16 +87,32 @@ class Shipment(models.Model):
     taillift = fields.Boolean(string="Taillift", tracking=True)
     sequence = fields.Char(string="Sequence")
 
-    _sql_constraints = [
-        ('reference_uniq', 'unique(reference)', 'Reference must be unique.'),
-    ]
-
     def name_get(self):
         result = []
         for rec in self:
             name = rec.reference or "New"
             result.append((rec.id, name))
         return result
+
+
+    _sql_constraints = [
+        ('reference_uniq', 'unique(reference)', 'Reference must be unique.'),
+    ]
+
+    @api.constrains('total_quantity')
+    def _check_total_quantity(self):
+        for rec in self:
+            if rec.total_quantity and rec.total_quantity < 0:
+                raise ValidationError(_("Total quantity cannot be negative."))
+
+    @api.constrains('spx_status', 'vehicle_id')
+    def _check_vehicle_security(self):
+        for rec in self:
+            if rec.spx_status == 'secured' and rec.vehicle_id and not rec.vehicle_id.secured:
+                raise ValidationError(_("You must select a secured vehicle when SPX status is 'Secured'."))
+            if rec.express and rec.vehicle_id and not rec.vehicle_id.express:
+                raise ValidationError(_("You must select an express vehicle."))
+
 
     @api.depends('customer_id', 'customer_id.company_ids')
     def _compute_domain_delivery_company_id(self):
@@ -102,17 +122,10 @@ class Shipment(models.Model):
             else:
                 rec.domain_delivery_company_id = []
 
-    def create(self, vals):
-        shipment_type = vals.get("shipment_type") or self.env.context.get("default_shipment_type")
-        company_id = vals.get('company_id') or self.env.company.id
-        if shipment_type == "import":
-            seq_code = "shipment.management.import"
-        else:
-            seq_code = "shipment.management.export"
-        if not vals.get("reference") or vals["reference"] == "New":
-            vals["reference"] = self.env['ir.sequence'].with_company(company_id).next_by_code(seq_code) or "/"
-
-        return super().create(vals)
+    @api.depends('loading_time_from', 'loading_time_to')
+    def _compute_loading_time(self):
+        for rec in self:
+            rec.loading_time = f"{rec.loading_time_from:.2f} - {rec.loading_time_to:.2f}"
 
     @api.depends('line_ids.quantity', 'line_ids.weight', 'line_ids.volume', 'line_ids.price_unit')
     def _compute_totals(self):
@@ -121,15 +134,19 @@ class Shipment(models.Model):
             weight = 0.0
             volume = 0.0
             price = 0.0
+            chargeable_weight = 0.0
             for line in rec.line_ids:
                 qty += (line.quantity or 0)
                 weight += (line.weight or 0.0)
                 volume += (line.volume or 0.0)
+                chargeable_weight += (line.chargeable_weight or 0.0)
                 price += (line.price_unit or 0.0) * (line.quantity or 0)
             rec.total_quantity = qty
             rec.total_weight = weight
             rec.total_volume = volume
+            rec.total_chargeable_weight = chargeable_weight
             rec.total_price = price
+
     @api.depends('spx_status', 'direct', 'security_measurement')
     def _compute_red_folder(self):
         for rec in self:
@@ -173,37 +190,6 @@ class Shipment(models.Model):
             else:
                 rec.shipment_type_display = ''
 
-    def action_confirm(self):
-        for rec in self:
-            if not rec.line_ids:
-                raise ValidationError(_("You must add at least one shipment line before confirming."))
-            rec.write({'state': 'confirmed'})
-
-    def action_pick(self):
-        self.write({'state': 'picked'})
-
-    def action_deliver(self):
-        self.write({'state': 'delivered'})
-
-    def action_cancel(self):
-        self.write({'state': 'cancelled'})
-
-    def action_reset_to_draft(self):
-        self.write({'state': 'draft'})
-
-    @api.constrains('total_quantity')
-    def _check_total_quantity(self):
-        for rec in self:
-            if rec.total_quantity and rec.total_quantity < 0:
-                raise ValidationError(_("Total quantity cannot be negative."))
-
-    @api.constrains('spx_status', 'vehicle_id')
-    def _check_vehicle_security(self):
-        for rec in self:
-            if rec.spx_status == 'secured' and rec.vehicle_id and not rec.vehicle_id.secured:
-                raise ValidationError(_("You must select a secured vehicle when SPX status is 'Secured'."))
-            if rec.express and  rec.vehicle_id and not rec.vehicle_id.express:
-                raise ValidationError(_("You must select an express vehicle."))
 
 
     @api.onchange('customer_id')
@@ -229,8 +215,7 @@ class Shipment(models.Model):
                 self.delivery_company_id = False
 
 
-
-    @api.onchange('delivery_company_id')
+    @api.onchange('delivery_company_id', 'delivery_company_id.zip')
     def _onchange_delivery_company_id(self):
         for rec in self:
             rec.zip_code = False
@@ -255,6 +240,51 @@ class Shipment(models.Model):
         else:
             self.direct = False
 
+    def create(self, vals):
+        shipment_type = vals.get("shipment_type") or self.env.context.get("default_shipment_type")
+        company_id = vals.get('company_id') or self.env.company.id
+        if shipment_type == "import":
+            seq_code = "shipment.management.import"
+        else:
+            seq_code = "shipment.management.export"
+        if not vals.get("reference") or vals["reference"] == "New":
+            vals["reference"] = self.env['ir.sequence'].with_company(company_id).next_by_code(seq_code) or "/"
+
+        shipment = super().create(vals)
+        if shipment.customer_id and shipment.delivery_company_id:
+            shipment.customer_id.company_ids |= shipment.delivery_company_id
+        return shipment
+
+    def write(self, vals):
+        res = super().write(vals)
+        for rec in self:
+            if rec.customer_id and rec.delivery_company_id:
+                rec.customer_id.company_ids |= rec.delivery_company_id
+        return res
+
+
+    def action_confirm(self):
+        for rec in self:
+            if not rec.line_ids:
+                raise ValidationError(_("You must add at least one shipment line before confirming."))
+
+            for line in rec.line_ids:
+                if line.chargeable_weight <= 0 or line.quantity <= 0:
+                    raise ValidationError(_("Chargeable Weight and Quantity must be greater than 0."))
+
+            rec.state = 'confirmed'
+
+    def action_pick(self):
+        self.write({'state': 'picked'})
+
+    def action_deliver(self):
+        self.write({'state': 'delivered'})
+
+    def action_cancel(self):
+        self.write({'state': 'cancelled'})
+
+    def action_reset_to_draft(self):
+        self.write({'state': 'draft'})
 
     def action_open_shipment(self):
         self.ensure_one()

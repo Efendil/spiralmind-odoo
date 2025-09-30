@@ -21,11 +21,6 @@
                 </group>
 
             </xpath>
-            <xpath expr="//page[@name='contact_addresses']" position="inside">
-                <group>
-                    <field name="company_ids" widget="many2many_tags"/>
-                </group>
-            </xpath>
         </field>
     </record>
 </odoo>

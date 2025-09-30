@@ -16,7 +16,8 @@ class ShipmentLine(models.Model):
     width_cm = fields.Float(string="Width (cm)")
     height_cm = fields.Float(string="Height (cm)")
     price_unit = fields.Float(string="Unit Price", digits="Product Price")
-    chargeable_weight = fields.Float(string="Chargeable Weight (kg)",compute="_compute_chargeable_weight",store=True)
+    chargeable_weight = fields.Float(string="Chargeable Weight (kg)",compute="_compute_chargeable_weight",store=True,
+                                     readonly=False)
     volumetric_weight = fields.Float(string="Volumetric Weight (kg)", compute="_compute_chargeable_weight",store=True)
 
     @api.constrains('quantity')
@@ -33,7 +34,7 @@ class ShipmentLine(models.Model):
             else:
                 rec.volume = 0.0
 
-    @api.depends('length_cm', 'width_cm', 'height_cm', 'weight')
+    @api.depends('length_cm', 'width_cm', 'height_cm', 'weight','shipment_id.loading_meter')
     def _compute_chargeable_weight(self):
         for rec in self:
             volumetric_weight = 0.0
@@ -41,7 +42,7 @@ class ShipmentLine(models.Model):
                 volumetric_weight = (rec.length_cm * rec.width_cm * rec.height_cm) / 6000
             elif rec.volume:
                 volumetric_weight = rec.volume / 6000
-
-
+            loading_meter = rec.shipment_id.loading_meter or 0
+            l_weight = loading_meter * 700
             rec.volumetric_weight = volumetric_weight
-            rec.chargeable_weight = max(rec.weight or 0.0, volumetric_weight)
+            rec.chargeable_weight = max(rec.weight or 0.0, volumetric_weight, l_weight)
