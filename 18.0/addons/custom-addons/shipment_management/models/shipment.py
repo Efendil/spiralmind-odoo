@@ -33,8 +33,7 @@ class Shipment(models.Model):
     )
     customer_id = fields.Many2one('res.partner', string='Customer',required=True,
                                   domain=[('ref', '!=', False)],tracking=True)
-    ref_customer = fields.Char(string="Customer reference", compute='_compute_ref_customer',
-                               store=False, readonly=False,tracking=True,required=True)
+    ref_customer = fields.Char(string="Customer reference",tracking=True,required=True)
     delivery_company_id = fields.Many2one('res.partner', string="Pickup/Delivery Company", required=True,tracking=True)
     domain_delivery_company_id = fields.Binary(compute="_compute_domain_delivery_company_id", readonly=True)
     loading_time_from = fields.Float(string="From", tracking=True)
@@ -76,10 +75,8 @@ class Shipment(models.Model):
         ('ras_cargo', 'RAS-Cargo')
     ], string="Security measurement", tracking=True)
     direct = fields.Boolean(string="Direct",tracking=True)
-    handling_agent_id = fields.Many2one('res.partner', string="Ground Handling Agent",
-                                        domain=[('gha', '=', True)],tracking=True)
-    customer_warehouse_id = fields.Many2one('res.partner', string="Customer Warehouse",
-                                            domain=[('warehouse', '=', True)],tracking=True)
+    handling_agent_id = fields.Many2one('res.partner', string="Ground Handling Agent", tracking=True)
+    customer_warehouse_id = fields.Many2one('res.partner', string="Customer Warehouse",tracking=True)
     red_folder_required = fields.Boolean(string="C7 Red Folder Required", compute='_compute_red_folder',store=True)
     express = fields.Boolean(string="Express", tracking=True)
     loading_meter = fields.Float(string='Loading meter', tracking=True)
@@ -157,29 +154,6 @@ class Shipment(models.Model):
             else:
                 rec.red_folder_required = False
 
-    @api.depends("customer_id")
-    def _compute_ref_customer(self):
-        # today = datetime.today()
-        # year = today.strftime("%Y")
-        # month = today.strftime("%m")
-        #
-        # for rec in self:
-        #     if rec.customer_id and rec.customer_id.ref:
-        #         count = self.env['shipment.management'].search_count([
-        #             ('customer_id', '=', rec.customer_id.id),
-        #             ('id', '!=', rec.id)]) + 1
-        #         rec.ref_customer = f"{rec.customer_id.ref}-{year}-{month}-{count:04d}"
-        #     else:
-        #         rec.ref_customer = False
-        for rec in self:
-            if rec.customer_id and rec.customer_id.order_ref:
-                count = self.env['shipment.management'].search_count([
-                    ('customer_id', '=', rec.customer_id.id),
-                    ('id', '!=', rec.id)]) + 1
-                rec.ref_customer = f"{rec.customer_id.order_ref}-{count:04d}"
-            else:
-                rec.ref_customer = False
-
     @api.depends('shipment_type')
     def _compute_shipment_type_display(self):
         for rec in self:
@@ -195,16 +169,16 @@ class Shipment(models.Model):
     @api.onchange('customer_id')
     def _onchange_customer_id(self):
         if self.customer_id:
-
-            partner_ids = self.customer_id.child_ids | self.customer_id
+            self.ref_customer = self.customer_id.order_ref
+            partner_ids = self.customer_id.child_ids
             gha_partner = partner_ids.filtered(lambda p: p.gha)
-            if gha_partner:
+            if len(gha_partner) == 1:
                 self.handling_agent_id = gha_partner[0]
             else:
                 self.handling_agent_id = False
 
             warehouse_partner = partner_ids.filtered(lambda p: p.warehouse)
-            if warehouse_partner:
+            if len(warehouse_partner) == 1:
                 self.customer_warehouse_id = warehouse_partner[0]
             else:
                 self.customer_warehouse_id = False
@@ -213,6 +187,8 @@ class Shipment(models.Model):
                 self.delivery_company_id = self.customer_id.company_ids[0]
             else:
                 self.delivery_company_id = False
+        else:
+            self.ref_customer = False
 
 
     @api.onchange('delivery_company_id', 'delivery_company_id.zip')
@@ -239,6 +215,13 @@ class Shipment(models.Model):
             self.direct = True
         else:
             self.direct = False
+
+    @api.onchange('direct')
+    def _onchange_direct(self):
+        if self.direct:
+            self.customer_warehouse_id = False
+        else:
+            self.handling_agent_id = False
 
     def create(self, vals):
         shipment_type = vals.get("shipment_type") or self.env.context.get("default_shipment_type")

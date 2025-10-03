@@ -8,7 +8,6 @@ class ShipmentLine(models.Model):
     _description = "Shipment Line"
 
     shipment_id = fields.Many2one('shipment.management', string="Shipment", required=True, ondelete='cascade')
-    description = fields.Char(string="Description", required=True)
     quantity = fields.Integer(string="Quantity", default=1)
     weight = fields.Float(string="Weight (kg)", digits='Product Unit of Measure')
     volume = fields.Float(string="Volume (m³)", digits=(16, 3), compute="_compute_volume",store=True, readonly=False)
@@ -34,14 +33,14 @@ class ShipmentLine(models.Model):
             else:
                 rec.volume = 0.0
 
-    @api.depends('length_cm', 'width_cm', 'height_cm', 'weight','shipment_id.loading_meter')
+    @api.depends('length_cm', 'width_cm', 'height_cm', 'weight','volume','shipment_id.loading_meter')
     def _compute_chargeable_weight(self):
         for rec in self:
             volumetric_weight = 0.0
             if rec.length_cm and rec.width_cm and rec.height_cm:
                 volumetric_weight = (rec.length_cm * rec.width_cm * rec.height_cm) / 6000
             elif rec.volume:
-                volumetric_weight = rec.volume / 6000
+                volumetric_weight = rec.volume * 1000000 / 6000
             loading_meter = rec.shipment_id.loading_meter or 0
             l_weight = loading_meter * 700
             rec.volumetric_weight = volumetric_weight

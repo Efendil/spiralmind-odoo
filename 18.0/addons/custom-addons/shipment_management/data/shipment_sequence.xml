@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
+
         <!-- Sequence for Import Shipments -->
         <record id="seq_shipment_import" model="ir.sequence">
             <field name="name">Shipment Import</field>
             <field name="code">shipment.management.import</field>
             <field name="prefix">C7-IMP-%(day)s%(month)s%(y)s</field>
             <field name="padding">4</field>
-            <field name="company_id" eval="False"/>
+            <field name="use_date_range" eval="True"/>
         </record>
 
         <!-- Sequence for Export Shipments -->
@@ -16,7 +17,7 @@
             <field name="code">shipment.management.export</field>
             <field name="prefix">C7-EXP-%(day)s%(month)s%(y)s</field>
             <field name="padding">4</field>
-            <field name="company_id" eval="False"/>
+            <field name="use_date_range" eval="True"/>
         </record>
     </data>
 </odoo>

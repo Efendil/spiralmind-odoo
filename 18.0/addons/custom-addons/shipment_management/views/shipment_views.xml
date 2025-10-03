@@ -27,12 +27,13 @@
                 <field name="customer_id"/>
                 <field name="ref_customer"/>
                 <field name="shipment_type_display"/>
-                <field name="delivery_company_id"/>
+                <field name="delivery_company_id" domain="domain_delivery_company_id"/>
                 <field name="loading_time"/>
                 <field name="spx_status"
                        decoration-success="spx_status == 'secured'"
                        decoration-danger="spx_status=='unsecured'"/>
                 <field name="zip_code"/>
+                <field name="city"/>
                 <field name="dangerous"/>
                 <field name="taillift"/>
                 <field name="total_quantity"/>
@@ -46,11 +47,14 @@
                        decoration-warning="state == 'cancelled'"
                        widget="badge"/>
                 <field name="postal_code_code"/>
-                <field name="vehicle_id"/>
+                <field name="vehicle_id"
+                       domain="[('secured', '=', spx_status == 'secured'), ('express', '=', express)]"/>
                 <field name="sequence"/>
                 <field name="security_measurement" decoration-success="security_measurement"/>
-                <field name="handling_agent_id"/>
-                <field name="customer_warehouse_id"/>
+                <field name="handling_agent_id" domain="[('parent_id', '=', customer_id), ('gha', '=', True)]"
+                context="{'default_parent_id': customer_id.id, 'default_gha': True, 'default_type':'delivery'}"/>
+                <field name="customer_warehouse_id" domain="[('parent_id', '=', customer_id), ('warehouse', '=', True)]"
+                context="{'default_parent_id': customer_id, 'default_warehouse': True, 'default_type':'delivery'}"/>
 
             </list>
         </field>
@@ -98,7 +102,8 @@
                             <field name="taillift" />
                             <field name="express"/>
                             <field name="loading_meter" invisible="not express"/>
-                            <field name="vehicle_id"/>
+                            <field name="vehicle_id"
+                                   domain="[('secured', '=', spx_status == 'secured'), ('express', '=', express)]"/>
                         </group>
                     </group>
 
@@ -107,8 +112,12 @@
                             <field name="spx_status"/>
                             <field name="security_measurement" invisible="spx_status == 'secured'"/>
                             <field name="direct"/>
-                            <field name="handling_agent_id" invisible="not direct"/>
-                            <field name="customer_warehouse_id" invisible="direct"/>
+                            <field name="handling_agent_id" invisible="not direct"
+                            domain="[('parent_id', '=', customer_id), ('gha', '=', True)]"
+                            context="{'default_parent_id': customer_id, 'default_gha': True, 'default_type':'delivery'}"/>
+                            <field name="customer_warehouse_id" invisible="direct"
+                            domain="[('parent_id', '=', customer_id), ('warehouse', '=', True)]"
+                            context="{'default_parent_id': customer_id, 'default_warehouse': True, 'default_type':'delivery'}"/>
                             <field name="red_folder_required"/>
                         </group>
                         <group>
@@ -125,7 +134,6 @@
                         <page string="Shipment Lines">
                             <field name="line_ids">
                                 <list editable="bottom">
-                                    <field name="description"/>
                                     <field name="quantity"/>
                                     <field name="weight"/>
                                     <field name="volume"/>
